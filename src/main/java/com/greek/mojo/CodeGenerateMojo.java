@@ -1,25 +1,29 @@
 package com.greek.mojo;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.generator.AutoGenerator;
 import com.baomidou.mybatisplus.generator.InjectionConfig;
 import com.baomidou.mybatisplus.generator.config.*;
 import com.baomidou.mybatisplus.generator.config.builder.ConfigBuilder;
-import com.baomidou.mybatisplus.generator.config.po.TableFill;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.baomidou.mybatisplus.generator.config.rules.FileType;
 import com.baomidou.mybatisplus.generator.config.rules.NamingStrategy;
+import com.baomidou.mybatisplus.generator.engine.FreemarkerTemplateEngine;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.*;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 import static com.greek.enums.XmlTagEnum.*;
 
@@ -38,17 +42,21 @@ public class CodeGenerateMojo extends AbstractMojo {
             defaultValue = "${project.basedir}/src/main/resources/generatorConfig.xml", required = true)
     private File configurationFile;
 
-    @Parameter(property = "template.file", required = true)
-    private File templateFile;
+    @Parameter(readonly = true, required = true, defaultValue = "${project.build.sourceDirectory}")
+    private String project_path;
+
+    @Parameter(readonly = true, required = true, defaultValue = "${project.build.resources[0].directory}")
+    private String resourcePath;
+
+    @Parameter(required = true, defaultValue = "${project.package.name}")
+    private String packageName;
+
 
     // 配置文件属性
     private static Properties configProperties;
 
     // 模板配置文件属性
     private static Properties templatePathProperties;
-
-    //输出路径
-    private static String out_put_dir = "F:\\project\\mybatistools\\src\\main\\java";
 
     // 数据库配置
     private static String username;
@@ -67,28 +75,17 @@ public class CodeGenerateMojo extends AbstractMojo {
     private static String[] excludes = {
 //            "SYS_USER"
     };
-    //自定义实体类父类
-    private static String super_entity = "com.yzj.mybatistools.module";
-    //自定义实体类父类的公共字段
-    private static String[] super_entity_columns = {"test_id"};
-    // 自定义需要填充的字段
-    private static List<TableFill> table_fill_list = new ArrayList<>();
 
-    //包名，导入使用
-    private static String package_path = "/com/yzj/mybatistools";
 
-    //文件输出路径
-    private static String project_path = System.getProperty("user.dir");
+    private String packagePath;
 
-    private static String java_path = project_path + "/src/main/java" + package_path;
-    private static String resource_path = project_path + "/src/main";
 
-    private static String entity_path = java_path + "/entity";
-    private static String mapper_path = java_path + "/mapper";
-    private static String service_path = java_path + "/service";
-    private static String service_impl_path = java_path + "/service/impl";
-    private static String controller_path = java_path + "/controller";
-    private static String xml_path = resource_path + "/resources/mybatis-mapper" + package_path + "/mapper";
+    private String entity_path;
+    private String mapper_path;
+    private String service_path;
+    private String service_impl_path;
+    private String controller_path;
+    private String xml_path;
 
     //文件输出模板
     private static String entity_template;
@@ -98,27 +95,21 @@ public class CodeGenerateMojo extends AbstractMojo {
     private static String service_impl_template;
     private static String controller_template;
 
-    public static void main(String[] args) throws MojoExecutionException {
-        loadTemplateConfig();
-    }
-
     @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
+    public void execute() throws MojoExecutionException {
         init();
 
-//        AutoGenerator mpg = new AutoGenerator()
-//                .setGlobalConfig(globalConfig())
-//                .setDataSource(dataSourceConfig())
-//                .setStrategy(strategyConfig())
-//                .setPackageInfo(packageConfig())
-//                // 因为使用了自定义模板,所以需要把各项置空否则会多生成一次
-//                .setTemplate(templateConfig())
-//                // 使用的模板引擎，如果不是默认模板引擎则需要添加模板依赖到pom
-//                .setTemplateEngine(new FreemarkerTemplateEngine())
-//                .setCfg(injectionConfig());
-//        mpg.execute();
-//        // 打印注入设置，这里演示模板里面怎么获取注入内容【可无】
-//        System.err.println(mpg.getCfg().getMap().get("abc"));
+        AutoGenerator mpg = new AutoGenerator()
+                .setGlobalConfig(globalConfig())
+                .setDataSource(dataSourceConfig())
+                .setStrategy(strategyConfig())
+                .setPackageInfo(packageConfig())
+                // 因为使用了自定义模板,所以需要把各项置空否则会多生成一次
+                .setTemplate(templateConfig())
+                // 使用的模板引擎，如果不是默认模板引擎则需要添加模板依赖到pom
+                .setTemplateEngine(new FreemarkerTemplateEngine())
+                .setCfg(injectionConfig());
+        mpg.execute();
     }
 
     /**
@@ -127,7 +118,6 @@ public class CodeGenerateMojo extends AbstractMojo {
     private GlobalConfig globalConfig() {
         return new GlobalConfig()
                 .setAuthor(author) // 作者
-                .setOutputDir(out_put_dir)//输出目录
                 .setOpen(false)// 生成文件后打开目录
                 .setFileOverride(true)// 文件覆盖
                 .setActiveRecord(true)// 开启activeRecord模式
@@ -160,11 +150,25 @@ public class CodeGenerateMojo extends AbstractMojo {
         String xmlContent = readFileAsString(configurationFile);
         JSONObject jsonObject = JSONUtil.parseFromXml(xmlContent);
 
-        configProperties = parseGenerateConfig(jsonObject);
+        parseGenerateConfig(jsonObject);
 
         loadDatabaseConfig();
 
         loadTemplateConfig();
+
+        loadGenerateFilePathConfig();
+    }
+
+    private void loadGenerateFilePathConfig() {
+        packagePath = convertPath(packageName);
+        String javaFilePath = combineWithFileSeparator(project_path, packagePath);
+
+        entity_path = combinePath(javaFilePath, "/entity");
+        mapper_path = combinePath(javaFilePath, "/mapper");
+        service_path = combinePath(javaFilePath, "/service");
+        service_impl_path = combinePath(javaFilePath, "/service/impl");
+        controller_path = combinePath(javaFilePath, "/controller");
+        xml_path = resourcePath + "/mybatis-mapper" + File.separator + packagePath + "/mapper";
     }
 
     /**
@@ -190,13 +194,14 @@ public class CodeGenerateMojo extends AbstractMojo {
      * 包配置，设置包路径用于导包时使用，路径示例：com.path
      */
     private PackageConfig packageConfig() {
-        String parent = package_path.replace('/', '.').substring(1);
-        String entity = entity_path.substring(java_path.length()).replace('/', '.').substring(1);
-        String mapper = mapper_path.substring(java_path.length()).replace('/', '.').substring(1);
-        String xml = xml_path.substring(resource_path.length()).replace('/', '.').substring(1);
-        String service = service_path.substring(java_path.length()).replace('/', '.').substring(1);
-        String service_impl = service_impl_path.substring(java_path.length()).replace('/', '.').substring(1);
-        String controller = controller_path.substring(java_path.length()).replace('/', '.').substring(1);
+        String parent = packageName;
+        String entity = convertPackage(entity_path);
+        String mapper = convertPackage(mapper_path);
+        String xml = convertPackage(xml_path);
+        String service = convertPackage(service_path);
+        String service_impl = convertPackage(service_impl_path);
+        String controller = convertPackage(controller_path);
+
         return new PackageConfig()
                 //父包名
                 .setParent(parent)
@@ -293,10 +298,14 @@ public class CodeGenerateMojo extends AbstractMojo {
     }
 
     private void loadDatabaseConfig() throws MojoExecutionException {
-        JSONObject databaseConfig = JSONUtil.parseObj(configProperties.getProperty(JDBCCONNECTION.getTag()));
+        JSONObject databaseConfig = JSONUtil.parseObj(configProperties.get(JDBCCONNECTION.getTag()));
+        getLog().debug("数据库配置信息: " + databaseConfig.toJSONString(4));
+
 
         databaseConfig.getByPath("dbType");
         String dbTypeStr = databaseConfig.getStr("dbType");
+        getLog().debug("获取的数据库类型: " + dbTypeStr);
+
         DbType dbType = DbType.getDbType(dbTypeStr);
 
         if (dbType == DbType.OTHER) {
@@ -311,9 +320,9 @@ public class CodeGenerateMojo extends AbstractMojo {
         driverClassName = databaseConfig.getStr("driverClass");
     }
 
-    private static void loadTemplateConfig() throws MojoExecutionException {
-        JSONArray templatePath = JSONUtil.parseArray(configProperties.getProperty(TEMPLATEPATH.getTag()));
-        templatePathProperties = parseProperty(templatePath);
+    private void loadTemplateConfig() {
+        JSONObject templatePath = JSONUtil.parseObj(configProperties.get(TEMPLATEPATH.getTag()));
+        templatePathProperties = parseProperty(JSONUtil.parseArray(templatePath.get("property")));
 
         entity_template = templatePathProperties.getProperty("entityPath");
         mapper_template = templatePathProperties.getProperty("mapperPath");
@@ -351,14 +360,14 @@ public class CodeGenerateMojo extends AbstractMojo {
         return sbf.toString();
     }
 
-    protected Properties parseGenerateConfig(JSONObject rootConfig) {
+    protected void parseGenerateConfig(JSONObject rootConfig) {
         Properties result = new Properties();
 
         JSONObject jsonObject = JSONUtil.parseObj(rootConfig.get(ROOT.getTag()));
         result.put(JDBCCONNECTION.getTag(), jsonObject.get(JDBCCONNECTION.getTag()));
         result.put(TEMPLATEPATH.getTag(), jsonObject.get(TEMPLATEPATH.getTag()));
 
-        return result;
+        configProperties = result;
     }
 
 
@@ -368,6 +377,23 @@ public class CodeGenerateMojo extends AbstractMojo {
                 .map(JSONUtil::parseObj)
                 .forEach(e -> result.put(e.get("name"), e.get("value")));
         return result;
+    }
+
+    private String convertPath(String packageName) {
+        return packageName.replace(".", File.separator);
+    }
+
+    private String convertPackage(String path) {
+        return path.replace(File.separator, ".");
+    }
+
+
+    private String combineWithFileSeparator(String path, String anotherPath) {
+        return StrUtil.format("{}{}{}", path, File.separator, anotherPath);
+    }
+
+    private String combinePath(String path, String anotherPath) {
+        return StrUtil.format("{}{}", path, anotherPath);
     }
 
 }

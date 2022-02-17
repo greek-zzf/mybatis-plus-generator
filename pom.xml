@@ -10,9 +10,9 @@
     <packaging>maven-plugin</packaging>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <maven.compiler.encoding>utf-8</maven.compiler.encoding>
         <mavenVersion>3.8.3</mavenVersion>
         <mybatis-plus.version>3.4.1</mybatis-plus.version>
     </properties>
@@ -57,13 +57,12 @@
             <version>5.7.21</version>
         </dependency>
 
-        <!--    代码生成模板依赖    -->
+
         <dependency>
             <groupId>org.freemarker</groupId>
             <artifactId>freemarker</artifactId>
             <version>2.3.30</version>
         </dependency>
-
 
     </dependencies>
 
