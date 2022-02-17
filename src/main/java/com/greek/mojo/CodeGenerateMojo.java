@@ -5,24 +5,19 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.annotation.DbType;
-import com.baomidou.mybatisplus.core.toolkit.StringPool;
-import com.baomidou.mybatisplus.generator.AutoGenerator;
-import com.baomidou.mybatisplus.generator.InjectionConfig;
+import com.baomidou.mybatisplus.generator.FastAutoGenerator;
 import com.baomidou.mybatisplus.generator.config.*;
-import com.baomidou.mybatisplus.generator.config.builder.ConfigBuilder;
-import com.baomidou.mybatisplus.generator.config.po.TableInfo;
-import com.baomidou.mybatisplus.generator.config.rules.FileType;
-import com.baomidou.mybatisplus.generator.config.rules.NamingStrategy;
+import com.baomidou.mybatisplus.generator.config.converts.MySqlTypeConvert;
+import com.baomidou.mybatisplus.generator.config.querys.MySqlQuery;
+import com.baomidou.mybatisplus.generator.config.rules.DateType;
 import com.baomidou.mybatisplus.generator.engine.FreemarkerTemplateEngine;
+import com.baomidou.mybatisplus.generator.keywords.MySqlKeyWordsHandler;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 import static com.greek.enums.XmlTagEnum.*;
@@ -62,6 +57,7 @@ public class CodeGenerateMojo extends AbstractMojo {
     private static String username;
     private static String password;
     private static String url;
+    private static String scheme;
     private static DbType db_type;
     private static String driverClassName;
 
@@ -99,46 +95,40 @@ public class CodeGenerateMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         init();
 
-        AutoGenerator mpg = new AutoGenerator()
-                .setGlobalConfig(globalConfig())
-                .setDataSource(dataSourceConfig())
-                .setStrategy(strategyConfig())
-                .setPackageInfo(packageConfig())
-                // 因为使用了自定义模板,所以需要把各项置空否则会多生成一次
-                .setTemplate(templateConfig())
-                // 使用的模板引擎，如果不是默认模板引擎则需要添加模板依赖到pom
-                .setTemplateEngine(new FreemarkerTemplateEngine())
-                .setCfg(injectionConfig());
-        mpg.execute();
+        FastAutoGenerator.create(dataSourceConfig())
+                // 全局配置
+                .globalConfig(this::globalConfig)
+                // 包配置
+                .packageConfig(this::packageConfig)
+                // 策略配置
+                .strategyConfig(this::strategyConfig)
+                // 模板引擎配置
+                .templateEngine(new FreemarkerTemplateEngine())
+
+                .execute();
+
     }
 
     /**
      * 全局配置
      */
-    private GlobalConfig globalConfig() {
-        return new GlobalConfig()
-                .setAuthor(author) // 作者
-                .setOpen(false)// 生成文件后打开目录
-                .setFileOverride(true)// 文件覆盖
-                .setActiveRecord(true)// 开启activeRecord模式
-                .setEnableCache(false)// XML 二级缓存
-                .setBaseResultMap(true)// XML ResultMap: mapper.xml生成查询映射结果
-                .setBaseColumnList(true)// XML ColumnList: mapper.xml生成查询结果列
-                //.setSwagger2(true)// swagger注解; 须添加swagger依赖
-                .setKotlin(false) //是否生成 kotlin 代码
-                .setServiceName("%sService");//默认是I%sService
+    private void globalConfig(GlobalConfig.Builder builder) {
+        builder.fileOverride()
+                .outputDir(project_path)
+                .author(author)
+                .dateType(DateType.TIME_PACK)
+                .commentDate("yyyy-MM-dd").build();
     }
 
     /**
      * 数据源配置
      */
-    private DataSourceConfig dataSourceConfig() {
-        return new DataSourceConfig()
-                .setDbType(db_type)// 数据库类型
-                .setDriverName(driverClassName)// 连接驱动
-                .setUrl(url)// 地址
-                .setUsername(username)// 用户名
-                .setPassword(password);// 密码
+    private DataSourceConfig.Builder dataSourceConfig() {
+        return new DataSourceConfig.Builder(url, username, password)
+                .dbQuery(new MySqlQuery())
+                .schema(scheme)
+                .typeConvert(new MySqlTypeConvert())
+                .keyWordsHandler(new MySqlKeyWordsHandler());
     }
 
     private void init() throws MojoExecutionException {
@@ -174,128 +164,38 @@ public class CodeGenerateMojo extends AbstractMojo {
     /**
      * 生成策略配置，自定义命名，生成结构
      */
-    private StrategyConfig strategyConfig() {
-        return new StrategyConfig()
-                .setNaming(NamingStrategy.underline_to_camel)
-                .setColumnNaming(NamingStrategy.underline_to_camel)
-                .setInclude(tables)
-                // 去除表前缀,此处可以修改为您的表前缀
-                .setTablePrefix(entity_ignore_prefix)
-                .setChainModel(true)
-                // 生成实体类字段注解
-                .setEntityTableFieldAnnotationEnable(true)
-                // controller映射地址：驼峰转连字符
-                .setControllerMappingHyphenStyle(false)
-                // 生成RestController
-                .setRestControllerStyle(true);
+    private void strategyConfig(StrategyConfig.Builder builder) {
+        builder.enableCapitalMode()
+                .enableSkipView()
+                .disableSqlFilter()
+                .addInclude(tables)
+                .addTablePrefix(entity_ignore_prefix)
+                .build();
     }
 
     /**
-     * 包配置，设置包路径用于导包时使用，路径示例：com.path
+     * 生成的类包名配置，只需要设置父包名即可
+     * 默认的子包名为： entity, service, service.impl, mapper, mapper.xml, controller
      */
-    private PackageConfig packageConfig() {
-        String parent = packageName;
-        String entity = convertPackage(entity_path);
-        String mapper = convertPackage(mapper_path);
-        String xml = convertPackage(xml_path);
-        String service = convertPackage(service_path);
-        String service_impl = convertPackage(service_impl_path);
-        String controller = convertPackage(controller_path);
-
-        return new PackageConfig()
-                //父包名
-                .setParent(parent)
-                .setModuleName("")
-                //结构包
-                .setEntity(entity)
-                .setMapper(mapper)
-                .setXml(xml)
-                .setService(service)
-                .setServiceImpl(service_impl)
-                .setController(controller);
+    private void packageConfig(PackageConfig.Builder builder) {
+        builder.parent(packageName).build();
     }
 
     /**
      * 模板配置
      */
     private TemplateConfig templateConfig() {
-        // 自定义模板配置，模板可以参考源码 /mybatis-plus/src/main/resources/template
-        // 使用 copy至您项目 src/main/resources/template 目录下，模板名称也可自定义如下配置：
-        // 置空后方便使用自定义输出位置
-        return new TemplateConfig()
-                .setEntity(null)
-                .setXml(null)
-                .setMapper(null)
-                .setService(null)
-                .setServiceImpl(null)
-                .setController(null);
+
+        return new TemplateConfig.Builder()
+                .entity(entity_template)
+                .service(service_template)
+                .serviceImpl(service_impl_template)
+                .mapper(mapper_template)
+                .mapperXml(mapper_template)
+                .controller(controller_template)
+                .build();
     }
 
-    /**
-     * 自定义配置
-     */
-    private InjectionConfig injectionConfig() {
-        return new InjectionConfig() {
-            @Override
-            public void initMap() {
-                // 注入配置
-                Map<String, Object> map = new HashMap<>();
-                map.put("abc", this.getConfig().getGlobalConfig().getAuthor() + "-mp");
-                this.setMap(map);
-            }
-        }.setFileCreate(new IFileCreate() {
-            // 自定义输出文件
-            @Override
-            public boolean isCreate(ConfigBuilder configBuilder, FileType fileType, String filePath) {
-                // 检查文件目录，不存在自动递归创建
-                File file = new File(filePath);
-                if (!file.exists()) {
-                    file.getParentFile().mkdirs();
-                }
-                //自定义指定需要覆盖的文件 - 文件结尾名字参照 全局配置 中对各层文件的命名,未修改为默认值
-
-                if (new File(filePath).exists() &&
-                        (filePath.endsWith("Controller.java") || filePath.endsWith("Service.java") || filePath.endsWith("ServiceImpl.java"))) {
-                    return false;
-                }
-                return true;
-            }
-        }).setFileOutConfigList(
-                //指定模板、输出路径
-                Arrays.asList(
-                        new FileOutConfig(entity_template) {
-                            @Override
-                            public String outputFile(TableInfo tableInfo) {
-                                return entity_path + File.separator + tableInfo.getEntityName() + StringPool.DOT_JAVA;
-                            }
-                        }, new FileOutConfig(xml_template) {
-                            @Override
-                            public String outputFile(TableInfo tableInfo) {
-                                return xml_path + File.separator + tableInfo.getMapperName() + StringPool.DOT_XML;
-                            }
-                        }, new FileOutConfig(mapper_template) {
-                            @Override
-                            public String outputFile(TableInfo tableInfo) {
-                                return mapper_path + File.separator + tableInfo.getMapperName() + StringPool.DOT_JAVA;
-                            }
-                        }, new FileOutConfig(service_template) {
-                            @Override
-                            public String outputFile(TableInfo tableInfo) {
-                                return service_path + File.separator + tableInfo.getServiceName() + StringPool.DOT_JAVA;
-                            }
-                        }, new FileOutConfig(service_impl_template) {
-                            @Override
-                            public String outputFile(TableInfo tableInfo) {
-                                return service_impl_path + File.separator + tableInfo.getServiceImplName() + StringPool.DOT_JAVA;
-                            }
-                        }, new FileOutConfig(controller_template) {
-                            @Override
-                            public String outputFile(TableInfo tableInfo) {
-                                return controller_path + File.separator + tableInfo.getControllerName() + StringPool.DOT_JAVA;
-                            }
-                        })
-        );
-    }
 
     private void loadDatabaseConfig() throws MojoExecutionException {
         JSONObject databaseConfig = JSONUtil.parseObj(configProperties.get(JDBCCONNECTION.getTag()));
@@ -316,6 +216,7 @@ public class CodeGenerateMojo extends AbstractMojo {
         username = databaseConfig.getStr("username");
         db_type = dbType;
         password = databaseConfig.getStr("password");
+        scheme = databaseConfig.getStr("scheme");
         url = databaseConfig.getStr("connectionURL");
         driverClassName = databaseConfig.getStr("driverClass");
     }
