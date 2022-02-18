@@ -51,9 +51,10 @@ mvn mybatis-plus-generator:generate
 
 <generatorConfiguration>
     <jdbcConnection driverClass="com.mysql.cj.jdbc.Driver"
-                    connectionURL="jdbc:mysql://192.168.100.203:3306/visible_port?useUnicode=true&amp;characterEncoding=utf-8&amp;useSSL=true&amp;serverTimezone=UTC"
-                    username="root"
-                    password="123456"
+                    connectionURL="jdbc:mysql://ip:port/xxx?useUnicode=true&amp;characterEncoding=utf-8&amp;useSSL=true&amp;serverTimezone=UTC"
+                    username="xxx"
+                    password="xxx"
+                    scheme="xxx"
                     dbType="MYSQL">
     </jdbcConnection>
 
