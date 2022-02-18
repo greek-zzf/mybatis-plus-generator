@@ -1,5 +1,6 @@
 package com.greek.mojo;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -18,6 +19,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 import static com.greek.enums.XmlTagEnum.*;
@@ -43,7 +45,7 @@ public class CodeGenerateMojo extends AbstractMojo {
     @Parameter(readonly = true, required = true, defaultValue = "${project.build.resources[0].directory}")
     private String resourcePath;
 
-    @Parameter(required = true, defaultValue = "${project.package.name}")
+    @Parameter(required = true, defaultValue = "com.generate", property = "package.name")
     private String packageName;
 
 
@@ -235,30 +237,7 @@ public class CodeGenerateMojo extends AbstractMojo {
 
 
     private static String readFileAsString(File file) {
-        InputStream in;
-        BufferedReader reader = null;
-        StringBuffer sbf = new StringBuffer();
-        try {
-            InputStreamReader isr = new InputStreamReader(new FileInputStream(file), "UTF-8");
-            reader = new BufferedReader(isr);
-            String tempStr;
-            while ((tempStr = reader.readLine()) != null) {
-                sbf.append(tempStr);
-            }
-            reader.close();
-            return sbf.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return sbf.toString();
+        return FileUtil.readString(file, StandardCharsets.UTF_8);
     }
 
     protected void parseGenerateConfig(JSONObject rootConfig) {
