@@ -2,7 +2,6 @@ package com.greek.enums;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.generator.config.StrategyConfig;
-import com.baomidou.mybatisplus.generator.config.builder.*;
 
 /**
  * @author Zhaofeng Zhou
@@ -14,6 +13,7 @@ public enum StrategyEnum {
         @Override
         public void strategyConfig(StrategyConfig.Builder builder) {
             builder.entityBuilder()
+                    .enableFileOverride()
                     .superClass("")
                     .disableSerialVersionUID()
                     .enableChainModel()
@@ -28,7 +28,8 @@ public enum StrategyEnum {
         @Override
         public void strategyConfig(StrategyConfig.Builder builder) {
             builder.mapperBuilder()
-                    .enableMapperAnnotation()
+                    .enableFileOverride()
+                    .mapperAnnotation(org.apache.ibatis.annotations.Mapper.class)
                     .enableBaseResultMap()
                     .enableBaseColumnList()
                     .formatMapperFileName("%sMapper")
@@ -40,6 +41,7 @@ public enum StrategyEnum {
         @Override
         public void strategyConfig(StrategyConfig.Builder builder) {
             builder.serviceBuilder()
+                    .enableFileOverride()
                     .formatServiceFileName("%sService")
                     .formatServiceImplFileName("%sServiceImp");
         }
@@ -53,6 +55,7 @@ public enum StrategyEnum {
         @Override
         public void strategyConfig(StrategyConfig.Builder builder) {
             builder.controllerBuilder()
+                    .enableFileOverride()
                     .enableHyphenStyle()
                     .enableRestStyle()
                     .formatFileName("%sController");
