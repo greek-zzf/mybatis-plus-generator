@@ -16,66 +16,29 @@ mvn install
 ### 配置
 在自己的项目中引用该插件依赖，version 版本以该项目实际版本为准
 ```xml
-    <plugin>
-                 <groupId>com.greek</groupId>
-                 <artifactId>mybatis-plus-generator-maven-plugin</artifactId>
-                 <version>1.0-SNAPSHOT</version>
-    </plugin>
+<plugin>
+    <groupId>com.greek</groupId>
+    <artifactId>mybatis-plus-generator-maven-plugin</artifactId>
+    <version>1.0-SNAPSHOT</version>
+</plugin>
 ```
 为了简化命令，建议在 Maven setting.xml 文件中配置如下信息（可选）
 
 ```xml
 <pluginGroups>
-  <pluginGroup>com.greek</pluginGroup>
+    <pluginGroup>com.greek</pluginGroup>
 </pluginGroups>
 ```
-在项目的 resources 文件夹下引入需要生成的模板，目前仅支持 Freemarker 模板。
 
-在项目的 resources 文件夹下引入配置文件 generatorConfig.xml，[配置文件](#配置文件)参考。
-
-执行命令，即可生成代码
+执行命令，根据控制台提示操作即可生成代码（默认覆盖同名文件）
 ```shell script
 mvn mybatis-plus-generator:generate
 ```
 
-
-## 默认约定
- 
-## 配置文件
- 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE generatorConfiguration
-        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
-        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
-
-<generatorConfiguration>
-    <jdbcConnection driverClass="com.mysql.cj.jdbc.Driver"
-                    connectionURL="jdbc:mysql://ip:port/xxx?useUnicode=true&amp;characterEncoding=utf-8&amp;useSSL=true&amp;serverTimezone=UTC"
-                    username="xxx"
-                    password="xxx"
-                    scheme="xxx"
-                    dbType="MYSQL">
-    </jdbcConnection>
-
-    <templatePath>
-        <property name="entityPath" value="freemarker/entity.java.ftl"/>
-        <property name="mapperPath" value="freemarker/mapper.xml.ftl"/>
-        <property name="servicePath" value="freemarker/mapper.java.ftl"/>
-        <property name="serviceImplPath" value="freemarker/service.java.ftl"/>
-        <property name="controllerPath" value="freemarker/serviceImpl.java.ftl"/>
-        <property name="mapperXmlPath" value="freemarker/controller.java.ftl"/>
-    </templatePath>
-
-</generatorConfiguration>
-
-```
-
-
-
 ## 后续实现功能及优化
-- [ ] 支持更多数据库
+- [ ] 支持排除不需要生成代码的表
 - [ ] 简化并重构部分代码
-- [ ] 优化文档（参考 Vue 文档）
-- [ ] 解决部分 bug
-- [ ] 补充后续文档
+- [ ] 代码格式优化
+- [ ] 简化插件，移除部分依赖包
+- [ ] 指定 MySQL 驱动版本
+- [ ] 发布到 maven 中央仓库
